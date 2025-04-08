@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as LoginImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/_dashboard/route'
 import { Route as DashboardIndexImport } from './routes/_dashboard/index'
+import { Route as DashboardInboxIndexImport } from './routes/_dashboard/inbox/index'
 
 // Create/Update Routes
 
@@ -31,6 +32,12 @@ const DashboardRouteRoute = DashboardRouteImport.update({
 const DashboardIndexRoute = DashboardIndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
+const DashboardInboxIndexRoute = DashboardInboxIndexImport.update({
+  id: '/inbox/',
+  path: '/inbox/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 
@@ -59,6 +66,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof DashboardRouteImport
     }
+    '/_dashboard/inbox/': {
+      id: '/_dashboard/inbox/'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof DashboardInboxIndexImport
+      parentRoute: typeof DashboardRouteImport
+    }
   }
 }
 
@@ -66,10 +80,12 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardInboxIndexRoute: typeof DashboardInboxIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardInboxIndexRoute: DashboardInboxIndexRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
@@ -80,11 +96,13 @@ export interface FileRoutesByFullPath {
   '': typeof DashboardRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/': typeof DashboardIndexRoute
+  '/inbox': typeof DashboardInboxIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/': typeof DashboardIndexRoute
+  '/inbox': typeof DashboardInboxIndexRoute
 }
 
 export interface FileRoutesById {
@@ -92,14 +110,20 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/_dashboard/': typeof DashboardIndexRoute
+  '/_dashboard/inbox/': typeof DashboardInboxIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/login' | '/'
+  fullPaths: '' | '/login' | '/' | '/inbox'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/'
-  id: '__root__' | '/_dashboard' | '/login' | '/_dashboard/'
+  to: '/login' | '/' | '/inbox'
+  id:
+    | '__root__'
+    | '/_dashboard'
+    | '/login'
+    | '/_dashboard/'
+    | '/_dashboard/inbox/'
   fileRoutesById: FileRoutesById
 }
 
@@ -130,7 +154,8 @@ export const routeTree = rootRoute
     "/_dashboard": {
       "filePath": "_dashboard/route.tsx",
       "children": [
-        "/_dashboard/"
+        "/_dashboard/",
+        "/_dashboard/inbox/"
       ]
     },
     "/login": {
@@ -138,6 +163,10 @@ export const routeTree = rootRoute
     },
     "/_dashboard/": {
       "filePath": "_dashboard/index.tsx",
+      "parent": "/_dashboard"
+    },
+    "/_dashboard/inbox/": {
+      "filePath": "_dashboard/inbox/index.tsx",
       "parent": "/_dashboard"
     }
   }
