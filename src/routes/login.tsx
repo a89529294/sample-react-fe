@@ -19,7 +19,7 @@ function Login() {
   const router = useRouter();
   const navigate = Route.useNavigate();
   const search = Route.useSearch();
-  const [username, setUsername] = useState("");
+  const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login } = useAuth();
@@ -28,13 +28,13 @@ function Login() {
     e.preventDefault();
 
     // Basic validation
-    if (!username || !password) {
-      setError("Please enter both username and password");
+    if (!account || !password) {
+      setError("Please enter both account and password");
       return;
     }
 
     try {
-      await login(username, password);
+      await login(account, password);
 
       await router.invalidate();
 
@@ -61,16 +61,16 @@ function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="username" className="block mb-2 font-medium">
-              Username
+            <label htmlFor="account" className="block mb-2 font-medium">
+              Account
             </label>
             <input
-              id="username"
+              id="account"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your username"
+              placeholder="Enter your account"
             />
           </div>
 

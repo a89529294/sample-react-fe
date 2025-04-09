@@ -1,44 +1,46 @@
 import * as React from "react";
 import { URL_PREFIX } from "../constants";
-import { AuthContext } from ".";
+import { AuthContext, User } from ".";
 
 type StoredAuth = {
-  username: string;
-  userId: string;
+  user: User;
   sessionToken: string;
 };
 
 const userKey = "tanstack.auth.user";
-const userIdKey = "tanstack.auth.user.id";
 const sessionTokenKey = "tanstack.auth.session.token";
 
 function getStoredAuth() {
   if (
     !localStorage.getItem(userKey) ||
-    !localStorage.getItem(userIdKey) ||
     !localStorage.getItem(sessionTokenKey)
   ) {
     localStorage.removeItem(userKey);
-    localStorage.removeItem(userIdKey);
     localStorage.removeItem(sessionTokenKey);
     return null;
   }
 
+  const userFromLocalStorage = JSON.parse(
+    localStorage.getItem(userKey)!
+  ) as User;
+
   return {
-    username: localStorage.getItem(userKey)!,
-    userId: localStorage.getItem(userIdKey)!,
+    user: {
+      id: userFromLocalStorage.id,
+      account: userFromLocalStorage.account,
+      name: userFromLocalStorage.name,
+      roleId: userFromLocalStorage.roleId,
+    },
     sessionToken: localStorage.getItem(sessionTokenKey)!,
   };
 }
 
 function setStoredAuth(storedAuth: StoredAuth | null) {
   if (storedAuth) {
-    localStorage.setItem(userKey, storedAuth.username);
-    localStorage.setItem(userIdKey, storedAuth.userId);
+    localStorage.setItem(userKey, JSON.stringify(storedAuth));
     localStorage.setItem(sessionTokenKey, storedAuth.sessionToken);
   } else {
     localStorage.removeItem(userKey);
-    localStorage.removeItem(userIdKey);
     localStorage.removeItem(sessionTokenKey);
   }
 }
@@ -62,42 +64,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuth(null);
   }, [auth?.sessionToken]);
 
-  const login = React.useCallback(
-    async (username: string, password: string) => {
-      const r = await fetch(`${URL_PREFIX}/login`, {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+  const login = React.useCallback(async (account: string, password: string) => {
+    const r = await fetch(`${URL_PREFIX}/login`, {
+      method: "POST",
+      body: JSON.stringify({ account, password }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      const response = await r.json();
-      if (!r.ok) {
-        throw new Error(response.error);
-      }
+    const response = (await r.json()) as {
+      success: true;
+      message: "Login successful";
+      sessionToken: string;
+      user: User;
+    };
 
-      const newAuth = {
-        username: response.username,
-        userId: response.userId,
-        sessionToken: response.sessionToken,
-      };
+    if (!r.ok) {
+      throw new Error("Unable to login");
+    }
 
-      setStoredAuth(newAuth);
-      setAuth(newAuth);
-    },
-    []
-  );
+    const newAuth = {
+      sessionToken: response.sessionToken,
+      user: response.user,
+    };
+
+    setStoredAuth(newAuth);
+    setAuth(newAuth);
+  }, []);
+
+  const sessionToken = auth?.sessionToken;
+  const me = React.useCallback(async () => {
+    const r = await fetch(`${URL_PREFIX}/me`, {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    });
+
+    if (!r.ok) {
+      setStoredAuth(null);
+      setAuth(null);
+      throw new Error("No active session or user");
+    }
+
+    const { user } = (await r.json()) as {
+      succes: true;
+      user: User;
+    };
+
+    setStoredAuth({
+      sessionToken: sessionToken!,
+      user: user,
+    });
+    setAuth({
+      sessionToken: sessionToken!,
+      user: user,
+    });
+  }, [sessionToken]);
 
   return (
     <AuthContext.Provider
       value={{
         isAuthenticated,
         sessionToken: auth?.sessionToken ?? null,
-        userId: auth?.userId ?? null,
-        username: auth?.username ?? null,
+        user: auth?.user ?? null,
         login,
         logout,
+        me,
       }}
     >
       {children}

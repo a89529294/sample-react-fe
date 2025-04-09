@@ -9,7 +9,22 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 export const Route = createFileRoute("/_dashboard")({
-  beforeLoad: ({ context, location }) => {
+  beforeLoad: async ({ context, location, cause }) => {
+    // only verify session/user authenticity on mount
+    if (cause === "enter") {
+      try {
+        await context.auth.me();
+      } catch (e) {
+        console.log(e);
+        throw redirect({
+          to: "/login",
+          search: {
+            redirect: location.href,
+          },
+        });
+      }
+    }
+
     if (!context.auth.isAuthenticated) {
       throw redirect({
         to: "/login",
@@ -19,6 +34,7 @@ export const Route = createFileRoute("/_dashboard")({
       });
     }
   },
+
   component: RouteComponent,
 });
 
@@ -26,7 +42,7 @@ function RouteComponent() {
   const router = useRouter();
   const navigate = Route.useNavigate();
 
-  const { logout, username } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <SidebarProvider>
@@ -41,7 +57,7 @@ function RouteComponent() {
                 <div className="font-bold text-xl">Company Logo</div>
               </div>
               <div className="flex items-center gap-4">
-                <span>user:{username || "guest"}</span>
+                <span>user:{user?.name || "guest"}</span>
                 <button
                   onClick={async () => {
                     await logout();
