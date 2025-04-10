@@ -29,7 +29,7 @@ function getStoredAuth() {
       id: userFromLocalStorage.id,
       account: userFromLocalStorage.account,
       name: userFromLocalStorage.name,
-      roleId: userFromLocalStorage.roleId,
+      roles: userFromLocalStorage.roles,
     },
     sessionToken: localStorage.getItem(sessionTokenKey)!,
   };

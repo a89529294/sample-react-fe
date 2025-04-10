@@ -15,5 +15,9 @@ export type User = {
   id: string;
   account: string;
   name: string;
-  roleId: string;
+  roles: {
+    id: string;
+    name: string;
+    chinese_name: string;
+  };
 };
