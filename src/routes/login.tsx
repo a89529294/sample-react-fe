@@ -33,19 +33,14 @@ function Login() {
       return;
     }
 
-    try {
-      await login(account, password);
-
+    await login(account, password, async () => {
       await router.invalidate();
 
       // may need this if auth state hasnt updated yet
       // await new Promise(r=>setTimeout(r,1000))
 
       await navigate({ to: search.redirect || "/" });
-    } catch (e) {
-      if (e instanceof Error) console.log(e.message);
-      else console.log(e);
-    }
+    });
   };
 
   return (

@@ -1,14 +1,15 @@
+import { trpcApiClient, type TrpcTypes } from "@/common/trpc-api";
 import * as React from "react";
-import { URL_PREFIX } from "../constants";
-import { AuthContext, User } from ".";
+import { AuthContext } from ".";
+import { URL_PREFIX, router } from "../constants";
 
 type StoredAuth = {
-  user: User;
+  user: TrpcTypes["User"];
   sessionToken: string;
 };
 
 const userKey = "tanstack.auth.user";
-const sessionTokenKey = "tanstack.auth.session.token";
+export const sessionTokenKey = "tanstack.auth.session.token";
 
 function getStoredAuth() {
   if (
@@ -22,22 +23,17 @@ function getStoredAuth() {
 
   const userFromLocalStorage = JSON.parse(
     localStorage.getItem(userKey)!
-  ) as User;
+  ) as TrpcTypes["User"];
 
   return {
-    user: {
-      id: userFromLocalStorage.id,
-      account: userFromLocalStorage.account,
-      name: userFromLocalStorage.name,
-      roles: userFromLocalStorage.roles,
-    },
+    user: userFromLocalStorage,
     sessionToken: localStorage.getItem(sessionTokenKey)!,
   };
 }
 
 function setStoredAuth(storedAuth: StoredAuth | null) {
   if (storedAuth) {
-    localStorage.setItem(userKey, JSON.stringify(storedAuth));
+    localStorage.setItem(userKey, JSON.stringify(storedAuth.user));
     localStorage.setItem(sessionTokenKey, storedAuth.sessionToken);
   } else {
     localStorage.removeItem(userKey);
@@ -48,6 +44,8 @@ function setStoredAuth(storedAuth: StoredAuth | null) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = React.useState<StoredAuth | null>(getStoredAuth());
   const isAuthenticated = !!auth;
+  const { mutate: trcpLogin } = trpcApiClient.login.useMutation();
+  const { mutate: fetchUserInfo } = trpcApiClient.me.useMutation();
 
   const logout = React.useCallback(async () => {
     const r = await fetch(`${URL_PREFIX}/logout`, {
@@ -64,63 +62,95 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuth(null);
   }, [auth?.sessionToken]);
 
-  const login = React.useCallback(async (account: string, password: string) => {
-    const r = await fetch(`${URL_PREFIX}/login`, {
-      method: "POST",
-      body: JSON.stringify({ account, password }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const login: AuthContext["login"] = React.useCallback(
+    async (account, password, onSuccess, onError) => {
+      trcpLogin(
+        { account: account, password: password },
+        {
+          onSuccess: (data) => {
+            console.log(data);
 
-    const response = (await r.json()) as {
-      success: true;
-      message: "Login successful";
-      sessionToken: string;
-      user: User;
-    };
+            setAuth({
+              sessionToken: data.sessionToken,
+              user: data.user,
+            });
+            setStoredAuth({
+              sessionToken: data.sessionToken,
+              user: data.user,
+            });
+            onSuccess();
+          },
+          onError: (error) => {
+            console.error(error);
+            if (onError) onError();
+          },
+        }
+      );
 
-    if (!r.ok) {
-      throw new Error("Unable to login");
-    }
+      // const r = await fetch(`${URL_PREFIX}/login`, {
+      //   method: "POST",
+      //   body: JSON.stringify({ account, password }),
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      // });
 
-    const newAuth = {
-      sessionToken: response.sessionToken,
-      user: response.user,
-    };
+      // const response = (await r.json()) as {
+      //   success: true;
+      //   message: "Login successful";
+      //   sessionToken: string;
+      //   user: User;
+      // };
 
-    setStoredAuth(newAuth);
-    setAuth(newAuth);
-  }, []);
+      // if (!r.ok) {
+      //   throw new Error("Unable to login");
+      // }
 
-  const sessionToken = auth?.sessionToken;
+      // const newAuth = {
+      //   sessionToken: response.sessionToken,
+      //   user: response.user,
+      // };
+
+      // setStoredAuth(newAuth);
+      // setAuth(newAuth);
+    },
+    [trcpLogin]
+  );
+
   const me = React.useCallback(async () => {
-    const r = await fetch(`${URL_PREFIX}/me`, {
-      headers: {
-        Authorization: `Bearer ${sessionToken}`,
+    await fetchUserInfo(undefined, {
+      onSuccess: () => {},
+      onError: () => {
+        setStoredAuth(null);
+        setAuth(null);
+
+        router.navigate({ to: "/login" });
       },
     });
 
-    if (!r.ok) {
-      setStoredAuth(null);
-      setAuth(null);
-      throw new Error("No active session or user");
-    }
-
-    const { user } = (await r.json()) as {
-      succes: true;
-      user: User;
-    };
-
-    setStoredAuth({
-      sessionToken: sessionToken!,
-      user: user,
-    });
-    setAuth({
-      sessionToken: sessionToken!,
-      user: user,
-    });
-  }, [sessionToken]);
+    // const r = await fetch(`${URL_PREFIX}/me`, {
+    //   headers: {
+    //     Authorization: `Bearer ${sessionToken}`,
+    //   },
+    // });
+    // if (!r.ok) {
+    //   setStoredAuth(null);
+    //   setAuth(null);
+    //   throw new Error("No active session or user");
+    // }
+    // const { user } = (await r.json()) as {
+    //   succes: true;
+    //   user: User;
+    // };
+    // setStoredAuth({
+    //   sessionToken: sessionToken!,
+    //   user: user,
+    // });
+    // setAuth({
+    //   sessionToken: sessionToken!,
+    //   user: user,
+    // });
+  }, [fetchUserInfo]);
 
   return (
     <AuthContext.Provider

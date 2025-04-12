@@ -12,17 +12,7 @@ export const Route = createFileRoute("/_dashboard")({
   beforeLoad: async ({ context, location, cause }) => {
     // only verify session/user authenticity on mount
     if (cause === "enter") {
-      try {
-        await context.auth.me();
-      } catch (e) {
-        console.log(e);
-        throw redirect({
-          to: "/login",
-          search: {
-            redirect: location.href,
-          },
-        });
-      }
+      await context.auth.me();
     }
 
     if (!context.auth.isAuthenticated) {
@@ -43,6 +33,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
 
   const { logout, user } = useAuth();
+  console.log(user);
 
   return (
     <SidebarProvider>
